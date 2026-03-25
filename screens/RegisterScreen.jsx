@@ -1,0 +1,238 @@
+// screens/RegisterScreen.jsx – DeltaPlus Corporate Design
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+  StatusBar,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+const RegisterScreen = ({ navigation }) => {
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const API_URL = "http://10.80.10.13:8000"; // Change to your computer's IP
+
+  const handleRegister = async () => {
+    if (!username || !fullName || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("full_name", fullName);
+      formData.append("password", password);
+
+      const response = await fetch(`${API_URL}/register`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert("Success", "Registration successful! Please login.", [
+          { text: "OK", onPress: () => navigation.replace("Login") },
+        ]);
+      } else {
+        Alert.alert("Error", data.detail || "Registration failed");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Could not connect to server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Image
+            source={require("../assets/deltaplus.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>DELTAPLUS</Text>
+          <Text style={styles.subtitle}>Create Account</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-outline" size={20} color="#F5C400" />
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#9CA3AF"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="person-circle-outline" size={20} color="#F5C400" />
+            <TextInput
+              style={styles.input}
+              placeholder="Full Name"
+              placeholderTextColor="#9CA3AF"
+              value={fullName}
+              onChangeText={setFullName}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#F5C400" />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#9CA3AF"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#F5C400"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#F5C400" />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password"
+              placeholderTextColor="#9CA3AF"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0A2A43" />
+            ) : (
+              <Text style={styles.registerButtonText}>Register</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => navigation.navigate("Login")}
+          >
+            <Text style={styles.loginText}>
+              Already have an account?{" "}
+              <Text style={styles.loginLinkText}>Login</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 48,
+  },
+  logo: {
+    width: 88,
+    height: 88,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#F5C400",
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    marginTop: 4,
+    opacity: 0.7,
+    fontWeight: "400",
+  },
+  form: {
+    gap: 16,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0A2A43",
+    borderWidth: 1,
+    borderColor: "#F5C400",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 8,
+    color: "#FFFFFF",
+  },
+  registerButton: {
+    backgroundColor: "#F5C400",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  registerButtonText: {
+    color: "#0A2A43",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loginLink: {
+    alignItems: "center",
+    marginTop: 16,
+  },
+  loginText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+  },
+  loginLinkText: {
+    color: "#F5C400",
+    fontWeight: "500",
+  },
+});
+
+export default RegisterScreen;
