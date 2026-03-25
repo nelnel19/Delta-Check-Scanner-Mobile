@@ -48,7 +48,7 @@ const AnalyzeScreen = ({ navigation }) => {
   const [tempEditData, setTempEditData] = useState(null);
   const [editData, setEditData] = useState(null);
 
-  const API_URL = "http://10.80.10.13:8000";
+  const API_URL = "http://192.168.1.115:8000";
 
   useEffect(() => {
     checkLoginStatus();

@@ -22,7 +22,7 @@ const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const API_URL = "http://10.80.10.13:8000"; // Change to your computer's IP
+  const API_URL = "http://192.168.1.115:8000"; // Change to your computer's IP
 
   const handleRegister = async () => {
     if (!username || !fullName || !password || !confirmPassword) {
