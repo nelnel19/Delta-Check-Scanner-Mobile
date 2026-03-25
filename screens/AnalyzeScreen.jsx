@@ -45,6 +45,8 @@ const AnalyzeScreen = ({ navigation }) => {
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentDateField, setCurrentDateField] = useState(null);
+  const [tempEditData, setTempEditData] = useState(null);
+  const [editData, setEditData] = useState(null);
 
   const API_URL = "http://10.80.10.13:8000";
 
@@ -184,8 +186,39 @@ const AnalyzeScreen = ({ navigation }) => {
     }
   };
 
+  // Validate required fields before saving
+  const validateRequiredFields = () => {
+    if (!displayData) return false;
+    
+    // Required fields including CR and CR Date
+    const requiredFields = ['pay_to_the_order_of', 'amount', 'date', 'check_no', 'cr', 'cr_date'];
+    const missingFields = [];
+    
+    for (const field of requiredFields) {
+      if (!displayData[field] || displayData[field].toString().trim() === '') {
+        missingFields.push(field.replace(/_/g, ' ').toUpperCase());
+      }
+    }
+    
+    if (missingFields.length > 0) {
+      Alert.alert(
+        "Missing Required Information",
+        `Please fill in the following required fields before sending:\n\n${missingFields.join('\n')}\n\nNote: CR and CR Date are required for accounting records.`,
+        [{ text: "OK", onPress: () => setEditModalVisible(true) }]
+      );
+      return false;
+    }
+    
+    return true;
+  };
+
   const saveToDatabase = async () => {
     if (!image || !displayData) return;
+    
+    // Validate required fields before proceeding
+    if (!validateRequiredFields()) {
+      return;
+    }
 
     setSaving(true);
     try {
@@ -225,6 +258,11 @@ const AnalyzeScreen = ({ navigation }) => {
     setDisplayData(null);
     setDebugMode(false);
     setSaved(false);
+    setEditModalVisible(false);
+    setTempEditData(null);
+    setEditData(null);
+    setShowDatePicker(false);
+    setCurrentDateField(null);
   };
 
   // Format date to MM-DD-YYYY
@@ -237,13 +275,32 @@ const AnalyzeScreen = ({ navigation }) => {
     return `${month}-${day}-${year}`;
   };
 
+  // Parse date from MM-DD-YYYY string
+  const parseDate = (dateString) => {
+    if (!dateString) return new Date();
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      // MM-DD-YYYY format
+      return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+    }
+    return new Date();
+  };
+
   // Handle date change from picker
   const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate && currentDateField) {
-      const formattedDate = formatDate(selectedDate);
-      setDisplayData({ ...displayData, [currentDateField]: formattedDate });
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
     }
+    
+    if (selectedDate && currentDateField && editData) {
+      const formattedDate = formatDate(selectedDate);
+      setEditData({ ...editData, [currentDateField]: formattedDate });
+    }
+    
+    if (Platform.OS === 'ios') {
+      setShowDatePicker(false);
+    }
+    
     setCurrentDateField(null);
   };
 
@@ -253,77 +310,27 @@ const AnalyzeScreen = ({ navigation }) => {
     setShowDatePicker(true);
   };
 
-  // Edit Modal Component with Date Picker for CR Date
-  const EditModal = ({ visible, onClose, data, onSave }) => {
-    const [tempData, setTempData] = useState(data);
+  const openEditModal = () => {
+    // Create a deep copy of displayData when opening the modal
+    if (displayData) {
+      setEditData(JSON.parse(JSON.stringify(displayData)));
+      setEditModalVisible(true);
+    }
+  };
 
-    useEffect(() => {
-      if (visible && data) {
-        setTempData(data);
-      }
-    }, [visible, data]);
+  const saveEditChanges = () => {
+    if (editData) {
+      setDisplayData(editData);
+      setEditModalVisible(false);
+      setEditData(null);
+    }
+  };
 
-    const handleSave = () => {
-      onSave(tempData);
-      onClose();
-    };
-
-    const handleFieldChange = (key, value) => {
-      setTempData({ ...tempData, [key]: value });
-    };
-
-    const fields = tempData ? Object.keys(tempData) : [];
-    
-    // Special fields that should use date picker
-    const dateFields = ['date', 'cr_date', 'received_date', 'date_deposited'];
-
-    return (
-      <Modal visible={visible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.editModalContent}>
-            <Text style={styles.modalTitle}>Edit Check Details</Text>
-            <ScrollView style={{ width: '100%' }} showsVerticalScrollIndicator={false}>
-              {tempData && fields.map((key) => (
-                <View key={key} style={styles.editField}>
-                  <Text style={styles.editLabel}>
-                    {key.replace(/_/g, ' ').toUpperCase()}
-                  </Text>
-                  
-                  {dateFields.includes(key) ? (
-                    <TouchableOpacity
-                      style={styles.datePickerButton}
-                      onPress={() => openDatePicker(key)}
-                    >
-                      <Text style={[styles.editInput, styles.dateInputText]}>
-                        {tempData[key] || "Select Date"}
-                      </Text>
-                      <Ionicons name="calendar-outline" size={20} color="#F5C400" />
-                    </TouchableOpacity>
-                  ) : (
-                    <TextInput
-                      style={styles.editInput}
-                      value={tempData[key] || ''}
-                      onChangeText={(text) => handleFieldChange(key, text)}
-                      placeholder={`Enter ${key.replace(/_/g, ' ')}`}
-                      placeholderTextColor="#9CA3AF"
-                      multiline={key === 'pay_to_the_order_of' || key === 'account_name'}
-                    />
-                  )}
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.editModalButtons}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}>
-                <Text style={styles.modalButtonText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
+  const closeEditModal = () => {
+    setEditModalVisible(false);
+    setEditData(null);
+    setShowDatePicker(false);
+    setCurrentDateField(null);
   };
 
   const renderPreviewModal = () => (
@@ -356,6 +363,10 @@ const AnalyzeScreen = ({ navigation }) => {
   const renderResult = () => {
     if (!displayData) return null;
 
+    // Check if required fields are filled (including CR and CR Date)
+    const requiredFields = ['pay_to_the_order_of', 'amount', 'date', 'check_no', 'cr', 'cr_date'];
+    const hasMissingFields = requiredFields.some(field => !displayData[field] || displayData[field].toString().trim() === '');
+
     return (
       <ScrollView style={styles.resultContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.resultHeader}>
@@ -363,14 +374,31 @@ const AnalyzeScreen = ({ navigation }) => {
           <Text style={styles.resultTitle}>Extracted Information</Text>
         </View>
 
-        {Object.entries(displayData).map(([key, value]) => (
-          <View key={key} style={styles.resultCard}>
-            <Text style={styles.fieldLabel}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
-            <Text style={[styles.fieldValue, key === 'amount' && styles.amount, key === 'check_no' && styles.highlight]}>
-              {value || "—"}
+        {Object.entries(displayData).map(([key, value]) => {
+          const isRequired = requiredFields.includes(key);
+          const isEmpty = !value || value.toString().trim() === '';
+          
+          return (
+            <View key={key} style={[styles.resultCard, isRequired && isEmpty && styles.missingFieldCard]}>
+              <View style={styles.fieldLabelContainer}>
+                <Text style={styles.fieldLabel}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
+                {isRequired && <Text style={styles.requiredStar}>*</Text>}
+              </View>
+              <Text style={[styles.fieldValue, key === 'amount' && styles.amount, key === 'check_no' && styles.highlight, isEmpty && styles.missingFieldValue]}>
+                {value || "—"}
+              </Text>
+            </View>
+          );
+        })}
+
+        {hasMissingFields && (
+          <View style={styles.warningCard}>
+            <Ionicons name="alert-circle-outline" size={20} color="#F5C400" />
+            <Text style={styles.warningText}>
+              Required fields are missing. Please edit the details before sending.
             </Text>
           </View>
-        ))}
+        )}
 
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity style={styles.primaryActionButton} onPress={resetSelection}>
@@ -378,16 +406,16 @@ const AnalyzeScreen = ({ navigation }) => {
             <Text style={styles.primaryActionText}>New Scan</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryActionButton} onPress={() => setEditModalVisible(true)}>
+          <TouchableOpacity style={styles.secondaryActionButton} onPress={openEditModal}>
             <Ionicons name="create-outline" size={20} color="#F5C400" />
             <Text style={styles.secondaryActionText}>Edit</Text>
           </TouchableOpacity>
 
           {!saved && (
             <TouchableOpacity
-              style={[styles.primaryActionButton, saving && styles.disabledButton]}
+              style={[styles.primaryActionButton, (saving || hasMissingFields) && styles.disabledButton]}
               onPress={saveToDatabase}
-              disabled={saving}
+              disabled={saving || hasMissingFields}
             >
               <Ionicons name="cloud-upload-outline" size={20} color="#0A2A43" />
               <Text style={styles.primaryActionText}>{saving ? "Saving..." : "Send"}</Text>
@@ -451,22 +479,98 @@ const AnalyzeScreen = ({ navigation }) => {
         {result && renderResult()}
         {renderPreviewModal()}
         
-        <EditModal
+        {/* Edit Modal */}
+        <Modal
           visible={editModalVisible}
-          onClose={() => setEditModalVisible(false)}
-          data={displayData}
-          onSave={(newData) => setDisplayData(newData)}
-        />
+          animationType="slide"
+          transparent={true}
+          onRequestClose={closeEditModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <Text style={styles.modalTitle}>Edit Check Details</Text>
+              <Text style={styles.modalSubtitle}>* Required fields must be filled (including CR and CR Date)</Text>
+              <ScrollView style={{ width: '100%' }} showsVerticalScrollIndicator={false}>
+                {editData && Object.keys(editData).map((key) => {
+                  const dateFields = ['date', 'cr_date', 'received_date', 'date_deposited'];
+                  const requiredFields = ['pay_to_the_order_of', 'amount', 'date', 'check_no', 'cr', 'cr_date'];
+                  const isDateField = dateFields.includes(key);
+                  const isRequired = requiredFields.includes(key);
+                  
+                  return (
+                    <View key={key} style={styles.editField}>
+                      <View style={styles.editLabelContainer}>
+                        <Text style={styles.editLabel}>
+                          {key.replace(/_/g, ' ').toUpperCase()}
+                        </Text>
+                        {isRequired && (
+                          <Text style={styles.requiredStar}>*</Text>
+                        )}
+                      </View>
+                      
+                      {isDateField ? (
+                        <TouchableOpacity
+                          style={styles.datePickerButton}
+                          onPress={() => openDatePicker(key)}
+                        >
+                          <Text style={[styles.editInput, styles.dateInputText]}>
+                            {editData[key] || "Select Date"}
+                          </Text>
+                          <Ionicons name="calendar-outline" size={20} color="#F5C400" />
+                        </TouchableOpacity>
+                      ) : (
+                        <TextInput
+                          style={styles.editInput}
+                          value={editData[key] || ''}
+                          onChangeText={(text) => setEditData({ ...editData, [key]: text })}
+                          placeholder={`Enter ${key.replace(/_/g, ' ')}`}
+                          placeholderTextColor="#9CA3AF"
+                          multiline={key === 'pay_to_the_order_of' || key === 'account_name'}
+                        />
+                      )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.editModalButtons}>
+                <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeEditModal}>
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={saveEditChanges}>
+                  <Text style={styles.modalButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
         
-        {/* Date Picker Modal */}
+        {/* Date Picker */}
         {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-            themeVariant="dark"
-          />
+          <View style={styles.datePickerOverlay}>
+            <View style={styles.datePickerContainer}>
+              <View style={styles.datePickerHeader}>
+                <Text style={styles.datePickerTitle}>Select Date</Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Ionicons name="close" size={24} color="#F5C400" />
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={editData && currentDateField ? parseDate(editData[currentDateField]) : new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                themeVariant="dark"
+              />
+              {Platform.OS === 'android' && (
+                <TouchableOpacity 
+                  style={styles.datePickerConfirmButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.datePickerConfirmText}>Confirm</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -600,8 +704,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "600",
-    marginBottom: 16,
+    marginBottom: 8,
     color: "#F5C400",
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    marginBottom: 16,
+    opacity: 0.7,
   },
   modalImage: {
     width: "100%",
@@ -669,17 +779,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1E3A5F",
   },
+  missingFieldCard: {
+    borderColor: "#F5C400",
+    borderWidth: 1.5,
+  },
+  fieldLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   fieldLabel: {
     fontSize: 12,
     color: "#F5C400",
-    marginBottom: 4,
     fontWeight: "500",
     letterSpacing: 0.5,
+  },
+  requiredStar: {
+    color: "#F5C400",
+    fontSize: 12,
+    fontWeight: "bold",
+    marginLeft: 4,
   },
   fieldValue: {
     fontSize: 16,
     color: "#FFFFFF",
     fontWeight: "400",
+  },
+  missingFieldValue: {
+    color: "#F5C400",
+    fontStyle: "italic",
   },
   highlight: {
     color: "#F5C400",
@@ -690,6 +818,23 @@ const styles = StyleSheet.create({
     color: "#F5C400",
     fontWeight: "600",
     fontSize: 18,
+  },
+  warningCard: {
+    backgroundColor: "rgba(245, 196, 0, 0.1)",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#F5C400",
+  },
+  warningText: {
+    color: "#F5C400",
+    fontSize: 12,
+    flex: 1,
   },
   actionButtonsRow: {
     flexDirection: "row",
@@ -750,10 +895,14 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 16,
   },
+  editLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   editLabel: {
     fontSize: 12,
     color: "#F5C400",
-    marginBottom: 4,
     fontWeight: "500",
     letterSpacing: 0.5,
   },
@@ -791,6 +940,58 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: "#F5C400",
+  },
+  datePickerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  datePickerContainer: {
+    backgroundColor: '#0A2A43',
+    borderRadius: 24,
+    padding: 20,
+    width: width * 0.9,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5C400',
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#F5C400',
+  },
+  datePickerConfirmButton: {
+    backgroundColor: '#F5C400',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  datePickerConfirmText: {
+    color: '#0A2A43',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
