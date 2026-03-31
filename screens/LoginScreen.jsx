@@ -21,7 +21,7 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const API_URL = "http://192.168.1.115:8000"; // Change to your computer's IP
+  const API_URL = "https://delta-check-scanner-backend-x430.onrender.com"; // Change to your computer's IP
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -67,7 +67,7 @@ const LoginScreen = ({ navigation }) => {
             resizeMode="contain"
           />
           <Text style={styles.title}>DELTAPLUS</Text>
-          <Text style={styles.subtitle}>Ngot Scanner</Text>
+          <Text style={styles.subtitle}>Check Scanner</Text>
         </View>
 
         <View style={styles.form}>

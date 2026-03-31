@@ -1,4 +1,3 @@
-// screens/AnalyzeScreen.jsx – Corporate DeltaPlus Design with CR and CR Date
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -18,7 +17,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystemLegacy from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -45,10 +44,9 @@ const AnalyzeScreen = ({ navigation }) => {
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentDateField, setCurrentDateField] = useState(null);
-  const [tempEditData, setTempEditData] = useState(null);
   const [editData, setEditData] = useState(null);
 
-  const API_URL = "http://192.168.1.115:8000";
+  const API_URL = "https://delta-check-scanner-backend-x430.onrender.com";
 
   useEffect(() => {
     checkLoginStatus();
@@ -68,7 +66,7 @@ const AnalyzeScreen = ({ navigation }) => {
 
   const compressImage = async (uri) => {
     try {
-      const fileInfo = await FileSystemLegacy.getInfoAsync(uri);
+      const fileInfo = await FileSystem.getInfoAsync(uri);
       if (fileInfo.size <= 800 * 1024) return uri;
       const compressed = await ImageManipulator.manipulateAsync(
         uri,
@@ -84,7 +82,6 @@ const AnalyzeScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (result && result.data) {
-      // Initialize CR and CR Date fields if not present
       setDisplayData({
         ...result.data,
         cr: result.data.cr || "",
@@ -186,11 +183,9 @@ const AnalyzeScreen = ({ navigation }) => {
     }
   };
 
-  // Validate required fields before saving
   const validateRequiredFields = () => {
     if (!displayData) return false;
     
-    // Required fields including CR and CR Date
     const requiredFields = ['pay_to_the_order_of', 'amount', 'date', 'check_no', 'cr', 'cr_date'];
     const missingFields = [];
     
@@ -215,7 +210,6 @@ const AnalyzeScreen = ({ navigation }) => {
   const saveToDatabase = async () => {
     if (!image || !displayData) return;
     
-    // Validate required fields before proceeding
     if (!validateRequiredFields()) {
       return;
     }
@@ -259,13 +253,11 @@ const AnalyzeScreen = ({ navigation }) => {
     setDebugMode(false);
     setSaved(false);
     setEditModalVisible(false);
-    setTempEditData(null);
     setEditData(null);
     setShowDatePicker(false);
     setCurrentDateField(null);
   };
 
-  // Format date to MM-DD-YYYY
   const formatDate = (date) => {
     if (!date) return "";
     const d = new Date(date);
@@ -275,18 +267,15 @@ const AnalyzeScreen = ({ navigation }) => {
     return `${month}-${day}-${year}`;
   };
 
-  // Parse date from MM-DD-YYYY string
   const parseDate = (dateString) => {
     if (!dateString) return new Date();
     const parts = dateString.split('-');
     if (parts.length === 3) {
-      // MM-DD-YYYY format
       return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
     }
     return new Date();
   };
 
-  // Handle date change from picker
   const onDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -304,14 +293,12 @@ const AnalyzeScreen = ({ navigation }) => {
     setCurrentDateField(null);
   };
 
-  // Open date picker for a specific field
   const openDatePicker = (fieldName) => {
     setCurrentDateField(fieldName);
     setShowDatePicker(true);
   };
 
   const openEditModal = () => {
-    // Create a deep copy of displayData when opening the modal
     if (displayData) {
       setEditData(JSON.parse(JSON.stringify(displayData)));
       setEditModalVisible(true);
@@ -363,7 +350,6 @@ const AnalyzeScreen = ({ navigation }) => {
   const renderResult = () => {
     if (!displayData) return null;
 
-    // Check if required fields are filled (including CR and CR Date)
     const requiredFields = ['pay_to_the_order_of', 'amount', 'date', 'check_no', 'cr', 'cr_date'];
     const hasMissingFields = requiredFields.some(field => !displayData[field] || displayData[field].toString().trim() === '');
 
@@ -479,7 +465,6 @@ const AnalyzeScreen = ({ navigation }) => {
         {result && renderResult()}
         {renderPreviewModal()}
         
-        {/* Edit Modal */}
         <Modal
           visible={editModalVisible}
           animationType="slide"
@@ -544,7 +529,6 @@ const AnalyzeScreen = ({ navigation }) => {
           </View>
         </Modal>
         
-        {/* Date Picker */}
         {showDatePicker && (
           <View style={styles.datePickerOverlay}>
             <View style={styles.datePickerContainer}>
