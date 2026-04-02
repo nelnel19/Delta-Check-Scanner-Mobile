@@ -46,7 +46,7 @@ const AnalyzeScreen = ({ navigation }) => {
   const [currentDateField, setCurrentDateField] = useState(null);
   const [editData, setEditData] = useState(null);
 
-  const API_URL = "https://delta-check-scanner-backend-x430.onrender.com";
+  const API_URL = "https://deltaplus-check-scanner-backend.onrender.com";
 
   useEffect(() => {
     checkLoginStatus();

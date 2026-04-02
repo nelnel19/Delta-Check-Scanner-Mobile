@@ -22,7 +22,7 @@ const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const API_URL = "https://delta-check-scanner-backend-x430.onrender.com"; // Change to your computer's IP
+  const API_URL = "https://deltaplus-check-scanner-backend.onrender.com"; // Change to your computer's IP
 
   const handleRegister = async () => {
     if (!username || !fullName || !password || !confirmPassword) {
